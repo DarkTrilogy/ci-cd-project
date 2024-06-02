@@ -1,0 +1,65 @@
+name: Build the project
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+env:
+  docker-tag: ${{ github.head_ref || github.ref_name }}-${GITHUB_SHA::7}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get the code
+        uses: actions/checkout@v3
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+      - name: Build with Maven
+        run: mvn clean install
+
+      - name: Build converter Docker image
+        run: docker build --tag ${{ secrets.DOCKERHUB_USERNAME }}/converter:${{ env.docker-tag }} ./converter
+      - name: Build accounts Docker image
+        run: docker build --tag ${{ secrets.DOCKERHUB_USERNAME }}/accounts:${{ env.docker-tag }} ./accounts
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Push converter Docker image
+        run: docker push ${{ secrets.DOCKERHUB_USERNAME }}/converter:${{ env.docker-tag }}
+      - name: Push accounts Docker image
+        run: docker push ${{ secrets.DOCKERHUB_USERNAME }}/accounts:${{ env.docker-tag }}
+
+      - name: Tag converter as latest
+        if: github.ref == 'refs/heads/main'
+        run: |
+          docker image tag ${{ secrets.DOCKERHUB_USERNAME }}/converter:${{ env.docker-tag }} ${{ secrets.DOCKERHUB_USERNAME }}/converter:latest
+      - name: Push latest tag for converter
+        if: github.ref == 'refs/heads/main'
+        run: |
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/converter:latest
+      - name: Tag accounts as latest
+        if: github.ref == 'refs/heads/main'
+        run: |
+          docker image tag ${{ secrets.DOCKERHUB_USERNAME }}/accounts:${{ env.docker-tag }} ${{ secrets.DOCKERHUB_USERNAME }}/accounts:latest
+      - name: Push latest tag for accounts
+        if: github.ref == 'refs/heads/main'
+        run: |
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/accounts:latest
+    outputs:
+      docker-tag: ${{ env.docker-tag }}
+  autotest:
+    needs: build
+    uses: ./.github/workflows/autotest4.yml
+    with:
+      chart-path: ./mychart
+      converter-image-name: awggeez/converter
+      accounts-image-name: awggeez/accounts
+      image-tag: ${{ needs.build.outputs.docker-tag }}

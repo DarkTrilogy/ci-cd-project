@@ -1,0 +1,33 @@
+rates-service:
+  url: ${RATES_URL}
+  rates-path: ${rates-service.url}/rates
+
+spring:
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: ${KEYCLOAK_URL}/realms/${KEYCLOAK_REALM:hse}/protocol/openid-connect/certs
+      client:
+        registration:
+          converter:
+            client-id: ${CLIENT_ID}
+            client-secret: ${CLIENT_SECRET}
+            authorization-grant-type: client_credentials
+            client-authentication-method: basic
+            provider: keycloak
+        provider:
+          keycloak:
+            token-uri: ${KEYCLOAK_URL}/realms/${KEYCLOAK_REALM:hse}/protocol/openid-connect/token
+
+logging:
+  level:
+    root: info
+
+management:
+  endpoint:
+    health:
+      probes:
+        enabled: true
+server:
+  port: 8081

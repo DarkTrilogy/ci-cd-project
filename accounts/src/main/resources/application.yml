@@ -1,0 +1,43 @@
+converter-service:
+  url: ${CONVERTER_URL}
+  converter-path: ${converter-service.url}/convert
+
+spring:
+  security:
+    oauth2:
+      client:
+        registration:
+          accounts:
+            client-id: ${CLIENT_ID}
+            client-secret: ${CLIENT_SECRET}
+            authorization-grant-type: client_credentials
+            client-authentication-method: basic
+            provider: keycloak
+        provider:
+          keycloak:
+            token-uri: ${KEYCLOAK_URL}/realms/${KEYCLOAK_REALM:hse}/protocol/openid-connect/token
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5433}/${DB_NAME:accounts}
+    username: ${DB_USER:postgres}
+    password: ${DB_PASSWORD:test}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    generate-ddl: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+        default_schema: public
+logging:
+  level:
+    root: info
+
+management:
+  endpoint:
+    health:
+      probes:
+        enabled: true
